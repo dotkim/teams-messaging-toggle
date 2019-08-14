@@ -1,0 +1,2 @@
+AzureAD - https://docs.microsoft.com/en-us/powershell/module/azuread/?view=azureadps-2.0
+Skype   - https://docs.microsoft.com/en-us/powershell/module/skype/?view=skype-ps
