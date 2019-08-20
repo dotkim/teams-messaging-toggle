@@ -6,7 +6,7 @@ function LogToFile {
   param (
     [string]$Message
   )
-  Add-Content -Path "C:\\Github\\teams-messaging-toggle\\toggle-teams-messaging-policy.ps1.log" -Value "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") - $($message)"
+  Add-Content -Path ".\toggle-teams-messaging-policy.ps1.log" -Value "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") - $($message)"
 }
 
 function Get-ConfigFile {
@@ -23,7 +23,7 @@ function Get-ConfigFile {
   }
 }
 
-$startTime = get-date
+$startTime = Get-Date
 LogToFile -Message "####### Script started #######"
 
 # get the config file
@@ -43,10 +43,15 @@ catch {
   Exit
 }
 
+
 # get the distribution lists which are going to be changed.
 # This should be a list of ObjectIDs
 try {
   $groups = Get-Content -Path $config.GroupListPath -ErrorAction Stop
+  if ($groups.count -lt 1) {
+    LogToFile -Message "No groups are listed, exiting"
+    Exit
+  }
 }
 catch {
   LogToFile -Message "Caught error when fetching groups"
@@ -66,6 +71,7 @@ catch {
   $Error.Clear()
   Exit
 }
+
 
 # get the users for which to set the policy
 LogToFile -Message "Fetching users to add"
@@ -89,7 +95,7 @@ LogToFile -Message "Found $($users.count) users"
 try {
   Import-Module "C:\Program Files\Common Files\Skype for Business Online\Modules\SkypeOnlineConnector\SkypeOnlineConnector.psd1"
   $session = New-CsOnlineSession -OverrideAdminDomain "digirom.onmicrosoft.com" -Credential $credentials
-  Import-PSSession $session
+  Import-PSSession $session -AllowClobber
 }
 catch {
   LogToFile -Message "$($Error.Exception.Message)"
@@ -109,5 +115,7 @@ $users | ForEach-Object {
   }
 }
 
-$endTime = get-date
+Remove-PSSession $session
+
+$endTime = Get-Date
 LogToFile -Message "Done. Time for the full run was: $(New-TimeSpan $startTime $endTime). Number of users affected: $($users.count)"
