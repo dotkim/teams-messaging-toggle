@@ -9,7 +9,6 @@
   "CsTeamsMessagingPolicyDeny": "NOT IN USE",
   "CsTeamsMeetingPolicyDeny": "NOT IN USE",
   "GroupListPath": "C:\\temp\\toggle-teams-messaging-policy.ps1.txt",
-  "GroupsEnabled": ["NOT IN USE"],
-  "LogPath": "C:\\temp\\toggle-teams-messaging-policy.ps1.log"
+  "GroupsEnabled": ["NOT IN USE"]
 }
 ```

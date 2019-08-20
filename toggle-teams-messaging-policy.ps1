@@ -6,7 +6,7 @@ function LogToFile {
   param (
     [string]$Message
   )
-  Add-Content -Path 'C:\Script\toggle-policy.log' -Value "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") - $($message)"
+  Add-Content -Path "C:\\Github\\teams-messaging-toggle\\toggle-teams-messaging-policy.ps1.log" -Value "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") - $($message)"
 }
 
 function Get-ConfigFile {
