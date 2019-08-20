@@ -63,6 +63,7 @@ $users | ForEach-Object {
   try {
     LogToFile -Message "User: $($_.UserPrincipalName)"
     Grant-CsExternalAccessPolicy -Identity $_ -PolicyName ""
+    Grant-CsTeamsMeetingPolicy -identity $_ -PolicyName ""
   }
   catch {
     LogToFile -Message "$($Error.Message)"
