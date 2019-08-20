@@ -6,25 +6,54 @@ function LogToFile {
   param (
     [string]$Message
   )
-  Add-Content -Path 'C:\temp\toggle-policy.log' -Value "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") - $($message)"
+  Add-Content -Path 'C:\Script\toggle-policy.log' -Value "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") - $($message)"
 }
+
+function Get-ConfigFile {
+  try {
+    $config = Get-Content -Path ".\toggle-teams-messaging-policy.ps1.config" -ErrorAction Stop
+    $config = ($config | ConvertFrom-Json)
+    return $config
+  }
+  catch {
+    LogToFile -Message "Caught error when fetching config file"
+    LogToFile -Message "$($Error.Message)"
+    $Error.Clear()
+    Exit
+  }
+}
+
+$startTime = get-date
+LogToFile -Message "####### Script started #######"
+
+# get the config file
+$config = Get-ConfigFile
 
 # create credentials for the user
 # this users needs access to Azure AD and Teams to work
-$username = ''
-$password = ''
-$credentials = New-Object System.Management.Automation.PSCredential $username, $password
+try {
+  $username = $config.Username
+  $password = ConvertTo-SecureString $config.Password -AsPlainText -Force -ErrorAction Stop
+  $credentials = New-Object System.Management.Automation.PSCredential $username, $password -ErrorAction Stop
+}
+catch {
+  LogToFile -Message "Error while creating credential"
+  LogToFile -Message "$($Error.Message)"
+  $Error.Clear()
+  Exit
+}
 
 # get the distribution lists which are going to be changed.
 # This should be a list of ObjectIDs
-$groups = Get-Content -Path 'C:\temp\distributionlists.txt'
+$groups = Get-Content -Path $config.GroupListPath
 
 # connect to the azure ad tenant
-Import-Module AzureAD
 try {
+  Import-Module AzureAD
   Connect-AzureAD -TenantId $tenant -Credential $credentials
 }
 catch {
+  LogToFile -Message "Caught error when connecting to AzureAD"
   LogToFile -Message "$($Error.Message)"
   Exit
 }
@@ -48,9 +77,9 @@ $groups | ForEach-Object {
 
 LogToFile -Message "Found $($users.count) users"
 
-Import-Module "C:\Program Files\Common Files\Skype for Business Online\Modules\SkypeOnlineConnector\SkypeOnlineConnector.psd1"
-$session = New-CsOnlineSession -OverrideAdminDomain "digirom.onmicrosoft.com" -Credential $credentials
 try {
+  Import-Module "C:\Program Files\Common Files\Skype for Business Online\Modules\SkypeOnlineConnector\SkypeOnlineConnector.psd1"
+  $session = New-CsOnlineSession -OverrideAdminDomain "digirom.onmicrosoft.com" -Credential $credentials
   Import-PSSession $session
 }
 catch {
@@ -62,11 +91,14 @@ LogToFile -Message "Granting policy to users..."
 $users | ForEach-Object {
   try {
     LogToFile -Message "User: $($_.UserPrincipalName)"
-    Grant-CsExternalAccessPolicy -Identity $_ -PolicyName ""
-    Grant-CsTeamsMeetingPolicy -identity $_ -PolicyName ""
+    Grant-CsTeamsMessagingPolicy -Identity $_ -PolicyName $config.CsTeamsMessagingPolicyAllow
+    Grant-CsTeamsMeetingPolicy -identity $_ -PolicyName $config.CsTeamsMeetingPolicyAllow
   }
   catch {
     LogToFile -Message "$($Error.Message)"
     $Error.Clear()
   }
 }
+
+$endTime = get-date
+LogToFile -Message "Done. Time for the full run was: $(New-TimeSpan $startTime $endTime). Number of users affected: $($users.count)"
