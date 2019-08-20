@@ -17,7 +17,7 @@ function Get-ConfigFile {
   }
   catch {
     LogToFile -Message "Caught error when fetching config file"
-    LogToFile -Message "$($Error.Message)"
+    LogToFile -Message "$($Error.Exception.Message)"
     $Error.Clear()
     Exit
   }
@@ -38,23 +38,32 @@ try {
 }
 catch {
   LogToFile -Message "Error while creating credential"
-  LogToFile -Message "$($Error.Message)"
+  LogToFile -Message "$($Error.Exception.Message)"
   $Error.Clear()
   Exit
 }
 
 # get the distribution lists which are going to be changed.
 # This should be a list of ObjectIDs
-$groups = Get-Content -Path $config.GroupListPath
+try {
+  $groups = Get-Content -Path $config.GroupListPath -ErrorAction Stop
+}
+catch {
+  LogToFile -Message "Caught error when fetching groups"
+  LogToFile -Message "$($Error.Exception.Message)"
+  $Error.Clear()
+  Exit
+}
 
 # connect to the azure ad tenant
 try {
   Import-Module AzureAD
-  Connect-AzureAD -TenantId $tenant -Credential $credentials
+  Connect-AzureAD -TenantId $config.TenantId -Credential $credentials
 }
 catch {
   LogToFile -Message "Caught error when connecting to AzureAD"
-  LogToFile -Message "$($Error.Message)"
+  LogToFile -Message "$($Error.Exception.Message)"
+  $Error.Clear()
   Exit
 }
 
@@ -70,7 +79,7 @@ $groups | ForEach-Object {
     }
   }
   catch {
-    LogToFile -Message "$($Error.Message)"
+    LogToFile -Message "$($Error.Exception.Message)"
     $Error.Clear()
   }
 }
@@ -83,7 +92,7 @@ try {
   Import-PSSession $session
 }
 catch {
-  LogToFile -Message "$($Error.Message)"
+  LogToFile -Message "$($Error.Exception.Message)"
   Exit
 }
 
@@ -95,7 +104,7 @@ $users | ForEach-Object {
     Grant-CsTeamsMeetingPolicy -identity $_ -PolicyName $config.CsTeamsMeetingPolicyAllow
   }
   catch {
-    LogToFile -Message "$($Error.Message)"
+    LogToFile -Message "$($Error.Exception.Message)"
     $Error.Clear()
   }
 }
