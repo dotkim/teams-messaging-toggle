@@ -3,13 +3,25 @@
 
 # function for logging
 function LogToFile {
+  <#
+    .LogToFile
+    Parameters: Message
+    Logs the message provided to the log file.
+    INFO, WARN and ERROR tags are added for the CM Trace Log Tool. Which is not baked into the function.
+  #>
   param (
     [string]$Message
   )
+  if (!$Message) { return }
   Add-Content -Path ".\toggle-teams-messaging-policy.ps1.log" -Value "$(Get-Date -Format "yyyy-MM-dd HH:mm:ss") - $($message)"
 }
 
 function Get-ConfigFile {
+  <#
+    .Get-ConfigFile
+    Fetches the config for the script from disk.
+    Returns PSCustomObject (Converted JSON)
+  #>
   try {
     $config = Get-Content -Path ".\toggle-teams-messaging-policy.ps1.config" -ErrorAction Stop
     $config = ($config | ConvertFrom-Json)
@@ -92,6 +104,7 @@ $groups | ForEach-Object {
 LogToFile -Message "INFO: Found $($users.count) users"
 
 try {
+  # seems like this is the best way to get the module, as it is wierdly enough not accessable by its module name sometimes
   Import-Module "C:\Program Files\Common Files\Skype for Business Online\Modules\SkypeOnlineConnector\SkypeOnlineConnector.psd1"
   $session = New-CsOnlineSession -OverrideAdminDomain "digirom.onmicrosoft.com" -Credential $credentials -ErrorAction Stop
   Import-PSSession $session
@@ -102,6 +115,7 @@ catch {
   Exit
 }
 
+# sets the policies for allowing messaging and meetings for each user
 LogToFile -Message "INFO: Granting policy to users..."
 $users | ForEach-Object {
   try {
@@ -115,6 +129,9 @@ $users | ForEach-Object {
   }
 }
 
+# remove the skype online session for cleanup purposes.
+# if the script is ran within 1 hour of the session starting the script will fail because of user policies.
+# this is ONLY if the session is not removed porperly.
 Remove-PSSession $session
 
 $endTime = Get-Date
