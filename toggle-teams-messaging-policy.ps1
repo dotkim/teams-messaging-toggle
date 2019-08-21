@@ -16,15 +16,15 @@ function Get-ConfigFile {
     return $config
   }
   catch {
-    LogToFile -Message "Caught error when fetching config file"
-    LogToFile -Message "$($Error.Exception.Message)"
+    LogToFile -Message "ERROR: Caught error when fetching config file"
+    LogToFile -Message "ERROR: $($Error.Exception.Message)"
     $Error.Clear()
     Exit
   }
 }
 
 $startTime = Get-Date
-LogToFile -Message "####### Script started #######"
+LogToFile -Message "INFO: Script started"
 
 # get the config file
 $config = Get-ConfigFile
@@ -37,25 +37,24 @@ try {
   $credentials = New-Object System.Management.Automation.PSCredential $username, $password -ErrorAction Stop
 }
 catch {
-  LogToFile -Message "Error while creating credential"
-  LogToFile -Message "$($Error.Exception.Message)"
+  LogToFile -Message "ERROR: While creating credential"
+  LogToFile -Message "ERROR: $($Error.Exception.Message)"
   $Error.Clear()
   Exit
 }
-
 
 # get the distribution lists which are going to be changed.
 # This should be a list of ObjectIDs
 try {
   $groups = Get-Content -Path $config.GroupListPath -ErrorAction Stop
   if ($groups.count -lt 1) {
-    LogToFile -Message "No groups are listed, exiting"
+    LogToFile -Message "WARN: No groups are listed, exiting"
     Exit
   }
 }
 catch {
-  LogToFile -Message "Caught error when fetching groups"
-  LogToFile -Message "$($Error.Exception.Message)"
+  LogToFile -Message "ERROR: Caught error when fetching groups"
+  LogToFile -Message "ERROR: $($Error.Exception.Message)"
   $Error.Clear()
   Exit
 }
@@ -66,15 +65,15 @@ try {
   Connect-AzureAD -TenantId $config.TenantId -Credential $credentials
 }
 catch {
-  LogToFile -Message "Caught error when connecting to AzureAD"
-  LogToFile -Message "$($Error.Exception.Message)"
+  LogToFile -Message "ERROR: Caught error when connecting to AzureAD"
+  LogToFile -Message "ERROR: $($Error.Exception.Message)"
   $Error.Clear()
   Exit
 }
 
 
 # get the users for which to set the policy
-LogToFile -Message "Fetching users to add"
+LogToFile -Message "INFO: Fetching users to add"
 $users = @()
 
 $groups | ForEach-Object {
@@ -85,32 +84,33 @@ $groups | ForEach-Object {
     }
   }
   catch {
-    LogToFile -Message "$($Error.Exception.Message)"
+    LogToFile -Message "ERROR: $($Error.Exception.Message)"
     $Error.Clear()
   }
 }
 
-LogToFile -Message "Found $($users.count) users"
+LogToFile -Message "INFO: Found $($users.count) users"
 
 try {
   Import-Module "C:\Program Files\Common Files\Skype for Business Online\Modules\SkypeOnlineConnector\SkypeOnlineConnector.psd1"
-  $session = New-CsOnlineSession -OverrideAdminDomain "digirom.onmicrosoft.com" -Credential $credentials
-  Import-PSSession $session -AllowClobber
+  $session = New-CsOnlineSession -OverrideAdminDomain "digirom.onmicrosoft.com" -Credential $credentials -ErrorAction Stop
+  Import-PSSession $session
 }
 catch {
-  LogToFile -Message "$($Error.Exception.Message)"
+  LogToFile -Message "ERROR: $($Error.Exception.Message)"
+  Remove-PSSession $session
   Exit
 }
 
-LogToFile -Message "Granting policy to users..."
+LogToFile -Message "INFO: Granting policy to users..."
 $users | ForEach-Object {
   try {
-    LogToFile -Message "User: $($_.UserPrincipalName)"
-    Grant-CsTeamsMessagingPolicy -Identity $_ -PolicyName $config.CsTeamsMessagingPolicyAllow
-    Grant-CsTeamsMeetingPolicy -identity $_ -PolicyName $config.CsTeamsMeetingPolicyAllow
+    LogToFile -Message "INFO: User: $($_.UserPrincipalName)"
+    Grant-CsTeamsMessagingPolicy -Identity $_.UserPrincipalName -PolicyName $config.CsTeamsMessagingPolicyAllow -ErrorAction Stop
+    Grant-CsTeamsMeetingPolicy -identity $_.UserPrincipalName -PolicyName $config.CsTeamsMeetingPolicyAllow -ErrorAction Stop
   }
   catch {
-    LogToFile -Message "$($Error.Exception.Message)"
+    LogToFile -Message "ERROR: $($Error.Exception.Message)"
     $Error.Clear()
   }
 }
@@ -118,4 +118,4 @@ $users | ForEach-Object {
 Remove-PSSession $session
 
 $endTime = Get-Date
-LogToFile -Message "Done. Time for the full run was: $(New-TimeSpan $startTime $endTime). Number of users affected: $($users.count)"
+LogToFile -Message "INFO: Done. Time for the full run was: $(New-TimeSpan $startTime $endTime). Number of users affected: $($users.count)"
