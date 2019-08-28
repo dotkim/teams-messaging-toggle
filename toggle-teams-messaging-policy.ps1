@@ -86,13 +86,14 @@ catch {
 
 # get the users for which to set the policy
 LogToFile -Message "INFO: Fetching users to add"
+$usersUnfiltered = @()
 $users = @()
 
 $groups | ForEach-Object {
   try {
-    $members = Get-AzureADGroupMember -ObjectId $_ -ErrorAction Stop
+    $members = Get-AzureADGroupMember -All $true -ObjectId $_ -ErrorAction Stop
     if ($members.count -ne 0) {
-      $users += $members
+      $usersUnfiltered += $members
     }
   }
   catch {
@@ -101,10 +102,33 @@ $groups | ForEach-Object {
   }
 }
 
-LogToFile -Message "INFO: Found $($users.count) users"
+LogToFile -Message "INFO: Found $($usersUnfiltered.count) users to filter"
 
 try {
-  # seems like this is the best way to get the module, as it is wierdly enough not accessable by its module name sometimes
+  LogToFile -Message "INFO: Checking if users already have the policies."
+  $AllowedUsers = Get-Content -Path $config.UsersEnabled -ErrorAction Stop
+  $AllowedUsers = ($AllowedUsers | ConvertFrom-Json)
+  if (!$AllowedUsers) {
+    $AllowedUsers = @{}
+  }
+  $usersUnfiltered | ForEach-Object {
+    $name = $_.UserPrincipalName.split("@")[0]
+    if (!($AllowedUsers | Get-Member $name)) {
+      $users += $_
+    }
+  }
+  if ($users.count -lt 1) {
+    LogToFile -Message "WARN: Found $($users.count) users to set, exiting script"
+    Exit
+  }
+  LogToFile -Message "INFO: Found $($users.count) users to set"
+}
+catch {
+  $Error
+  $Error.Clear()
+}
+
+try {
   Import-Module "C:\Program Files\Common Files\Skype for Business Online\Modules\SkypeOnlineConnector\SkypeOnlineConnector.psd1"
   $session = New-CsOnlineSession -OverrideAdminDomain "digirom.onmicrosoft.com" -Credential $credentials -ErrorAction Stop
   Import-PSSession $session
@@ -120,8 +144,10 @@ LogToFile -Message "INFO: Granting policy to users..."
 $users | ForEach-Object {
   try {
     LogToFile -Message "INFO: User: $($_.UserPrincipalName)"
+    $name = $_.UserPrincipalName.split("@")[0]
     Grant-CsTeamsMessagingPolicy -Identity $_.UserPrincipalName -PolicyName $config.CsTeamsMessagingPolicyAllow -ErrorAction Stop
     Grant-CsTeamsMeetingPolicy -identity $_.UserPrincipalName -PolicyName $config.CsTeamsMeetingPolicyAllow -ErrorAction Stop
+    $AllowedUsers | Add-Member -MemberType "NoteProperty" -Name $($name) -Value $true -Force
   }
   catch {
     LogToFile -Message "ERROR: $($Error.Exception.Message)"
@@ -134,5 +160,7 @@ $users | ForEach-Object {
 # this is ONLY if the session is not removed porperly.
 Remove-PSSession $session
 
+
+($AllowedUsers|ConvertTo-Json) | Out-File -FilePath $config.UsersEnabled -Encoding UTF8 -Force
 $endTime = Get-Date
 LogToFile -Message "INFO: Done. Time for the full run was: $(New-TimeSpan $startTime $endTime). Number of users affected: $($users.count)"

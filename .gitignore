@@ -2,3 +2,4 @@
 toggle-teams-messaging-policy.ps1.config
 toggle-teams-messaging-policy.ps1.log
 toggle-teams-messaging-policy.ps1.txt
+usersAllowed.json
