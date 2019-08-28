@@ -124,7 +124,7 @@ try {
   LogToFile -Message "INFO: Found $($users.count) users to set"
 }
 catch {
-  $Error
+  LogToFile -Message "ERROR: $($Error.Exception.Message)"
   $Error.Clear()
 }
 
