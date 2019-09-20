@@ -4,12 +4,18 @@
 # function for logging
 function LogToFile {
   <#
-    .LogToFile
-    Parameters: Message
-    Logs the message provided to the log file.
-    INFO, WARN and ERROR tags are added for the CM Trace Log Tool. Which is not baked into the function.
+    .SYNOPSIS
+      Logs the message provided to the log file.
+    .DESCRIPTION
+      Logs the message provided to the log file.
+    .PARAMETER Message
+      The string value you want to log
+    .EXAMPLE
+      LogToFile -Message "INFO: Script started"
   #>
   param (
+    [parameter(Mandatory = $true)]
+    [ValidateNotNullOrEmpty()]
     [string]$Message
   )
   if (!$Message) { return }
@@ -18,9 +24,14 @@ function LogToFile {
 
 function Get-ConfigFile {
   <#
-    .Get-ConfigFile
-    Fetches the config for the script from disk.
-    Returns PSCustomObject (Converted JSON)
+    .SYNOPSIS
+      Fetches the config for the script from disk.
+    .DESCRIPTION
+      Fetches the config for the script from disk.
+    .EXAMPLE
+      Get-ConfigFile
+    .NOTES
+      Returns PSCustomObject (Converted from JSON)
   #>
   try {
     $config = Get-Content -Path ".\toggle-teams-messaging-policy.ps1.config" -ErrorAction Stop
